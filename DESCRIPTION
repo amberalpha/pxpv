@@ -1,0 +1,16 @@
+Package: pxpv
+Type: Package
+Title: PPD revaluation to present value
+Version: 0.1
+Date: 2018-03-18
+Author: Giles Heywood
+Maintainer: <giles.heywood@gmail.com>
+Description: revalue
+License: contract
+Depends:
+    R (>= 3.0.0),
+    aautil, 
+    data.table
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.0.1
