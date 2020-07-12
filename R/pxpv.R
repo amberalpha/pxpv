@@ -1,6 +1,9 @@
 #' @export
 pxpvcncadjFun <-
-  function(nn='pxsocncd') {
+  function(#*#
+    nn='pxsocncd'
+    ) {#*#
+    # - [ ]  : cumulative adjustment
     getgd(nn)
     x1 <- cumsum(pxsocncd)
     x2 <-
@@ -15,11 +18,14 @@ pxpvcncadjFun <-
         new = c('adjustby', 'rcode')
       ), c('rcode', 'date'))
     putt(pxpvcncadjd)
-  }
+}#*#
 
 #' @export
 pxpvpvidFun <-
-  function(nn=c('pxpvcncadjd','pxlrprppd')) {
+  function(#*#
+    nn=c('pxpvcncadjd','pxlrprppd')
+    ) {#*#
+    # - [ ] rcode id price-paid lastsale pv dfinal
     getgd(nn)
     ilast <- pxlrprppd[, .(lastsale = max(deed_date)), id]
     pru <-
@@ -41,28 +47,41 @@ pxpvpvidFun <-
       )
 
     putt(pxpvpvidd)
-  }
+  }#*#
 
 #' @export
 pxpvpvrcFun <-
-  function(nn='pxpvpvidd') {
+  function(#*#
+    nn='pxpvpvidd'
+    ) {#*#
+    # - [ ] rcode dfinal PV
     getgd(nn)
     pxpvpvrcd <<- setkey(pxpvpvidd[, .(PV = sum(pv)), 'rcode,dfinal'], rcode)
     putt(pxpvpvrcd)
-  }
+  }#*#
 
 #' @export
 pxpvhvrcFun <-
-  function(nn=c('pxpvcncadjd','pxpvpvrcd')) {
+  function(#*#
+    nn=c('pxpvcncadjd','pxpvpvrcd')
+    ) {#*#
+    # - [ ] rcode date HV
     getgd(nn)
     x1 <- pxpvpvrcd[pxpvcncadjd, on = c(rcode = 'rcode')][, HV := PV * exp(adjustby)]
     pxpvhvrcd <<- x1[, .(rcode, date, HV)]
     putt(pxpvhvrcd)
-  }
+  }#*#
 
 #' @export
 pxpvppm1Fun <-
-  function(nn=c('pxpvpvidd','pxjoev2d','pxjoj1d',pxlrch1d='pxlrch1d'),pcl=grepstring(regpcode(c('WC','EC','W1','SW1','SW3','SW7'))),minppm2=8e3) {
+  function(#*#
+    nn=c('pxpvpvidd','pxjoev2d','pxjoj1d',pxlrch1d='pxlrch1d')
+    ,#*#
+    pcl=grepstring(regpcode(c('WC','EC','W1','SW1','SW3','SW7')))
+    ,#*#
+    minppm2=8e3
+    ) {#*#
+    # - [ ] join epc and lr with pv by id
     getgd(nn)
     x1 <- pxpvpvidd[,.(rcode=max(rcode),price_paid=max(price_paid),lastsale=max(lastsale),pv=max(pv),dfinal=max(dfinal)),id] #13m unique
     x2 <- pxjoev2d[,.(brn,median,gro)] #7.3m unique brn
@@ -73,11 +92,14 @@ pxpvppm1Fun <-
     x6 <- x5[!(grepl(pcl,id)&(pv/median)<minppm2&estate=='L')]
     pxpvppm1d <<- x6
     putt(pxpvppm1d)
-  }
+  }#*#
 
 #' @export
 pxpvppm2Fun <-
-  function(nn=c('pxpvppm1d')) {
+  function(#*#
+    nn=c('pxpvppm1d')
+    ) {#*#
+    # - [ ] rcode  cat catvalue variable value : tibble of sub-aggregated N and D of ratio
     getgd(nn)
     x1 <- c('type','estate','newbuild')
     x2 <- lapply(as.list(x1),c,'rcode')
@@ -89,11 +111,14 @@ pxpvppm2Fun <-
     }
     pxpvppm2d <<- rbindlist(x3)
     putt(pxpvppm2d)
-  }
+  }#*#
 
 #' @export
 pxpvppmxFun <-
-  function(nn=c('pxpvppm1d','pxzozoned')) {
+  function(#*#
+    nn=c('pxpvppm1d','pxzozoned')
+    ) {#*#
+    # - [ ] rcode ppm2 rank col :
     getgd(nn)
     x1 <- pxpvppm1d[!is.na(pv*median),.(price=sum(pv),m2=sum(median,na.rm=T)),rcode][,.(ppm2=price/m2),rcode][,rank:=(rank(ppm2)-1)/(.N-1)]
     miss <- as.list(setdiff(pxzozoned[,unique(rc)],x1[,rcode]))
@@ -102,22 +127,29 @@ pxpvppmxFun <-
       near <- x1[grepl(area,rcode)]
       miss[[i]] <- data.table(rcode=miss,ppm2=near[,mean(ppm2)],rank=near[,mean(rank)+min(diff(rank))/2])
     }
-    pxpvppmxd <<- setkey(rbind(x1,rbindlist(miss))[,rcode:=unlist(rcode)],rank)[,col:=gg_colour_hue(.N*1.1)[1:.N]]
+    pxpvppmxd <<- setkey(unique(rbind(x1,rbindlist(miss))[nchar(rcode)<=9][,rcode:=unlist(rcode)]),rank)[,col:=gg_colour_hue(.N*1.1)[1:.N]] #this line hacked 2019-10 eg nchar(rcode) and unique
     putt(pxpvppmxd)
-  }
+}#*#
 
 #' @export
 pxpvppm2tFun <-
-  function(nn=c('pxpvppmxd','pxpvcncadjd')) {
+  function(#*#
+    nn=c('pxpvppmxd','pxpvcncadjd')
+    ) {#*#
+    # - [ ]  rcode ppm2 rank col date adjustby ppm2t : timeseries ppm2
     getgd(nn)
     rcx <- intersect(unfactordt(pxpvcncadjd)[,sort(unique(rcode))],pxpvppmxd[,sort(unique(rcode))])
     pxpvppm2td <<- pxpvppmxd[pxpvcncadjd,on=c(rcode='rcode')][,ppm2t:=exp(adjustby)*ppm2]
     putt(pxpvppm2td)
-  }
+  }#*#
 
-#identify degenerate codes and their mapping to unique {rc12,EE,NN,EENN,rcunique}
 #' @export
-pxpvrcuniFun <- function(nn=c('pxoscpd','pxpvppm1d')) {
+pxpvrcuniFun <-
+  function(#*#
+    nn=c('pxoscpd','pxpvppm1d')
+    ) {#*#
+  # - [ ] rc12,EE,NN,EENN,rcunique : degenerate codes mapping to unique
+  getgd(nn)
   x1 <- setkey(pxoscpd,rc)
   x2 <- pxpvppm1d[,.(lastsale=max(lastsale)),rc12]
   x3 <- x1[x2][,EENN:=paste0(EE,'|',NN)]
@@ -125,10 +157,13 @@ pxpvrcuniFun <- function(nn=c('pxoscpd','pxpvppm1d')) {
   x5 <- x4[x3[,.(EENN,rc)],on=c(EENN='EENN')][!is.na(EE),.(rcunique=rc,rc12=i.rc,EENN,EE,NN)]
   pxpvrcunid <<- x5
   putt(pxpvrcunid)
-}
-pxpvrcunichk <- function() {
-  getgd(paste0((gsub('chk','',match.call()[[1]])),'d'))
-  getgd('pxoscpd')
-  res <- nrow(pxpvrcunid[pxpvrcunique==rc12,])==nrow(unique(pxpvrcunid[,.(EE,NN)]))
-  res & all(c('rcunique','rc12','EENN','EE','NN')%in%names(pxpvrcunid))
-}
+}#*#
+pxpvrcunichk <- #*#
+  function(#*#
+  ) {#*#
+  # - [ ] <comment>
+  getgd(paste0((gsub('chk','',match.call()[[1]])),'d'))#*#
+  getgd('pxoscpd')#*#
+  res <- nrow(pxpvrcunid[pxpvrcunique==rc12,])==nrow(unique(pxpvrcunid[,.(EE,NN)]))#*#
+  res & all(c('rcunique','rc12','EENN','EE','NN')%in%names(pxpvrcunid))#*#
+}#*#
